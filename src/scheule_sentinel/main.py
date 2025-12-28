@@ -53,7 +53,7 @@ def demand_decision() -> int:
     future = executor.submit(
         functools.partial(
             prompt_number,
-            prompt="Positive number to postpone by x minutes. 0 to discard event",
+            prompt="Enter delay in minutes or 0 to discard event.\n\n> ",
         )
     )
 
@@ -63,8 +63,10 @@ def demand_decision() -> int:
     return future.result()
 
 
-test_schedule: dict[datetime.time, str] = {
-    datetime.time(hr, min, s): f"Test event originally scheduled for {hr}:{min}:{s}"
+test_schedule: dict[datetime.datetime, str] = {
+    datetime.datetime.combine(
+        datetime.datetime.today().date(), datetime.time(hour=hr, minute=min, second=s)
+    ): f"Test event originally scheduled for {hr}:{min}:{s}"
     for hr in range(0, 24)
     for min in range(0, 60)
     for s in range(0, 60, 30)
@@ -74,15 +76,31 @@ Test events every 30 seconds in the day
 (the real format will not support seconds)
 """
 
+TEST = True
+
 if __name__ == "__main__":
 
     for time, event in test_schedule.items():
         print(f"{time} {event}")
 
-    schedule = test_schedule
+    if TEST:
+        schedule = test_schedule
+    else:
+        raise NotImplementedError
 
     while True:
 
-        print(demand_decision())
+        now = datetime.datetime.now()
 
-        sleep(10)
+        if now in schedule.keys(): # This comparison needs to be changed, as it misses all the time
+            print(f"EVENT: {schedule[now]}")
+            delay = demand_decision()
+
+            if delay > 0:
+                schedule[now + datetime.timedelta(minutes=delay)] = schedule[now]
+
+            del schedule[now]
+
+        if not TEST:
+            sleep(10)
+            # Second precision is needed for the test schedule so we don't sleep
