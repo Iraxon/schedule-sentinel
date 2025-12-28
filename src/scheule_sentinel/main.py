@@ -1,9 +1,11 @@
 import concurrent.futures
+from dataclasses import dataclass
 import datetime
+import heapq
 import functools
-from math import floor
 import winsound
 from time import sleep
+
 
 executor = concurrent.futures.InterpreterPoolExecutor(2)
 
@@ -24,15 +26,26 @@ def prompt_yes_no(prompt: str) -> bool:
                 print("Invalid input.")
 
 
-def prompt_number(prompt: str) -> int:
+def prompt_minutes_seconds(prompt: str) -> int:
+    """
+    Input is in minutes, unless suffixed with 's'
+
+    Output is in seconds
+    """
+
+    seconds = False
 
     while True:
 
         x = input(prompt)
 
-        try:
+        if x.endswith("s"):
+            x = x[:-1]
+            seconds = True
 
-            return int(x)
+        try:
+            x = int(x)
+            return x * 60 if not seconds else x
 
         except ValueError:
             print("Invalid input.")
@@ -48,12 +61,15 @@ def request_user_attention() -> None:
     sleep(1)
 
 
-def demand_decision() -> int:
+def demand_delay_decision() -> int:
 
     future = executor.submit(
         functools.partial(
-            prompt_number,
-            prompt="Enter delay in minutes or 0 to discard event.\n\n> ",
+            prompt_minutes_seconds,
+            prompt=(
+                "Enter 0 to dismiss, a number in minutes to delay,\n"
+                "or a number suffixed with s to delay in seconds.\n\n> "
+            ),
         )
     )
 
@@ -63,44 +79,84 @@ def demand_decision() -> int:
     return future.result()
 
 
-test_schedule: dict[datetime.datetime, str] = {
-    datetime.datetime.combine(
-        datetime.datetime.today().date(), datetime.time(hour=hr, minute=min, second=s)
-    ): f"Test event originally scheduled for {hr}:{min}:{s}"
-    for hr in range(0, 24)
-    for min in range(0, 60)
-    for s in range(0, 60, 30)
-}
-"""
-Test events every 30 seconds in the day
-(the real format will not support seconds)
-"""
+def demand_acknowledgement() -> None:
+
+    future = executor.submit(functools.partial(input, "Press Enter to acknowledge."))
+
+    while not future.done():
+        request_user_attention()
+
+
+type Schedule = list[ScheduleEntry]  # Heap queue
+
+
+@dataclass(frozen=True)
+class ScheduleEntry:
+    datetime: datetime.datetime
+    desc: str
+
+    def __lt__(self, other: ScheduleEntry) -> bool:
+        return self.datetime < other.datetime
+
+    def __eq__(self, other: object) -> bool:
+
+        if isinstance(other, ScheduleEntry):
+            return self.datetime == other.datetime
+
+        return False
+
+
+def test_schedule() -> Schedule:
+    """
+    One event five seconds into the future
+    """
+    return [
+        ScheduleEntry(
+            datetime.datetime.now() + datetime.timedelta(seconds=5), f"Test event"
+        )
+    ]
+
 
 TEST = True
 
 if __name__ == "__main__":
 
-    for time, event in test_schedule.items():
-        print(f"{time} {event}")
-
     if TEST:
-        schedule = test_schedule
+        schedule = test_schedule()
     else:
         raise NotImplementedError
+        # Remember to use heapq operations!
+
+    for entry in schedule:
+        print(f"{entry.datetime} {entry.desc}")
 
     while True:
 
         now = datetime.datetime.now()
 
-        if now in schedule.keys(): # This comparison needs to be changed, as it misses all the time
-            print(f"EVENT: {schedule[now]}")
-            delay = demand_decision()
+        print(now)
 
+        if len(schedule) == 0:
+            while True:
+                request_user_attention()
+
+        if (
+            schedule[0].datetime < now
+        ):  # Guaranteed to compare the earliest, because heapq
+            print(f"EVENT: {schedule[0].desc}")
+
+            delay = demand_delay_decision()
             if delay > 0:
-                schedule[now + datetime.timedelta(minutes=delay)] = schedule[now]
+                postponed = ScheduleEntry(
+                    datetime.datetime.now() + datetime.timedelta(seconds=delay),
+                    schedule[0].desc,
+                )
+                heapq.heapreplace(schedule, postponed)
+            else:
+                heapq.heappop(schedule)
 
-            del schedule[now]
-
+        # Higher precision is needed for testing
         if not TEST:
             sleep(10)
-            # Second precision is needed for the test schedule so we don't sleep
+        else:
+            sleep(0.5)
