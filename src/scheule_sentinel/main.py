@@ -3,7 +3,6 @@ import datetime
 import functools
 import heapq
 import winsound
-from dataclasses import dataclass
 from time import sleep
 
 from scheule_sentinel.prompting import prompt_minutes_seconds
@@ -12,6 +11,7 @@ from .test_schedule import test_schedule as test_schedule
 from .types import ScheduleEntry
 
 executor = concurrent.futures.InterpreterPoolExecutor(2)
+
 
 def request_user_attention() -> None:
     """
