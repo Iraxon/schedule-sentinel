@@ -8,7 +8,7 @@ from time import sleep
 from scheule_sentinel.prompting import prompt_minutes_seconds
 
 from .test_schedule import test_schedule as test_schedule
-from .types import ScheduleEntry
+from .classes import ScheduleEntry
 
 executor = concurrent.futures.InterpreterPoolExecutor(2)
 
