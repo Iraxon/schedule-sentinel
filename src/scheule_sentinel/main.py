@@ -53,6 +53,7 @@ TEST = True
 
 
 def main() -> None:
+
     if TEST:
         schedule = test_schedule()
     else:
