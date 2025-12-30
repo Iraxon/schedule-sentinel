@@ -51,8 +51,8 @@ def demand_acknowledgement() -> None:
 
 TEST = True
 
-if __name__ == "__main__":
 
+def main() -> None:
     if TEST:
         schedule = test_schedule()
     else:
@@ -98,3 +98,7 @@ if __name__ == "__main__":
             sleep(10)
         else:
             sleep(0.5)
+
+
+if __name__ == "__main__":
+    main()
