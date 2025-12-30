@@ -1,6 +1,6 @@
 import datetime
 
-from .classes import Schedule, ScheduleEntry
+from classes import Schedule, ScheduleEntry
 
 
 def test_schedule() -> Schedule:

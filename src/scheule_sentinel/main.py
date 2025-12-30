@@ -5,10 +5,10 @@ import heapq
 import winsound
 from time import sleep
 
-from scheule_sentinel.prompting import prompt_minutes_seconds
+from prompting import prompt_minutes_seconds
 
-from .test_schedule import test_schedule as test_schedule
-from .classes import ScheduleEntry
+from test_schedule import test_schedule as test_schedule
+from classes import ScheduleEntry
 
 executor = concurrent.futures.InterpreterPoolExecutor(2)
 
@@ -71,6 +71,7 @@ if __name__ == "__main__":
         if len(schedule) == 0:
             print(f"Schedule is empty!")
             demand_acknowledgement()
+            break
 
         if (
             schedule[0].datetime < now
