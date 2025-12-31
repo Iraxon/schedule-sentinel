@@ -5,10 +5,9 @@ import heapq
 import winsound
 from time import sleep
 
-from prompting import prompt_minutes_seconds
-
-from test_schedule import test_schedule as test_schedule
 from classes import ScheduleEntry
+from prompting import prompt_minutes_seconds
+from test_schedule import test_schedule as test_schedule
 
 executor = concurrent.futures.InterpreterPoolExecutor(2)
 
