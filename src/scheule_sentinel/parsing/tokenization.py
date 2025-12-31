@@ -1,10 +1,10 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 import re
 from dataclasses import dataclass
 from datetime import datetime, time
 from typing import Never, Self, cast
 
-type Token = TimeToken | DescToken | NewlineToken | WhitespaceToken | CommentToken | ErrorToken
+type Token = TimeToken | AmPmToken | DescToken | NewlineToken | ErrorToken
 
 
 @dataclass(frozen=True)
@@ -12,7 +12,7 @@ class TimeToken:
     time: datetime
 
     @classmethod
-    def of(cls, s: str) -> Self:
+    def of(cls, s: str, line: int, col: int) -> Self:
 
         hour, minute = map(int, s.split(":"))
 
@@ -20,11 +20,24 @@ class TimeToken:
 
 
 @dataclass(frozen=True)
+class AmPmToken:
+    value: bool
+    """
+    True for PM
+    """
+
+    @classmethod
+    def of(cls, s: str, line: int, col: int) -> Self:
+
+        return cls(s == "PM")
+
+
+@dataclass(frozen=True)
 class DescToken:
     value: str
 
     @classmethod
-    def of(cls, s: str) -> Self:
+    def of(cls, s: str, line: int, col: int) -> Self:
 
         return cls(s)
 
@@ -34,29 +47,9 @@ class NewlineToken:
     pass
 
     @classmethod
-    def of(cls, _: str) -> Self:
+    def of(cls, s: str, line: int, col: int) -> Self:
 
         return cls()
-
-
-@dataclass(frozen=True)
-class CommentToken:
-    pass
-
-    @classmethod
-    def of(cls, _: str) -> None:
-
-        return None
-
-
-@dataclass(frozen=True)
-class WhitespaceToken:
-    pass
-
-    @classmethod
-    def of(cls, _: str) -> None:
-
-        return None
 
 
 @dataclass(frozen=True)
@@ -64,50 +57,45 @@ class ErrorToken:
     pass
 
     @classmethod
-    def of(cls, s: str) -> Never:
+    def of(cls, s: str, line: int, col: int) -> Never:
 
         raise ValueError(f"Unexpected character: {s}")
 
 
-def token_of(type_str: str, lexeme: str, _: int, __: int) -> Token | None:
-
-    type = TOKEN_TYPE_MAP[type_str]
-
-    return type.of(lexeme)
-
-
-CAMEL_CASE_PATTERN = re.compile(r"(?<=[a-z])(?=[A-Z])")
+type TokenConstructor[T: Token] = Callable[[str, int, int], T | None]
+"""
+Retun None to refrain from adding a Token
+"""
 
 
-def snake_from_camel(n: str) -> str:
-    return ("_".join(re.split(CAMEL_CASE_PATTERN, n))).lower()
+def discard(s: str, line: int, col: int) -> None:
+    return None
 
 
-TOKEN_TYPE_MAP = {
-    snake_from_camel(type.__name__): type
-    for type in cast(
-        tuple[type[Token], ...],
-        (TimeToken, DescToken, NewlineToken, WhitespaceToken, CommentToken, ErrorToken),
-    )
-}
-
-TOKENS: tuple[tuple[str, str], ...] = (
-    ("time_token", r"\d{1,2}:\d{2}"),
-    ("comment_token", r"(?:#|//)[^\n]*?(?=\n)|/\*(?:.|\n)*?\*/"),
-    ("newline_token", r"\n"),
-    ("whitespace_token", r"\s+"),
-    ("desc_token", r"(?:\w| )*"),
-    ("error_token", r"."),
+TOKEN_MANIFEST: tuple[tuple[str, str, TokenConstructor[Token]], ...] = (
+    ("time_token", r"\d{1,2}:\d{2}", TimeToken.of),
+    ("am_pm_token", r"AM|PM", AmPmToken.of),
+    ("comment_token", r"(?:#|//)[^\n]*?(?=\n)|/\*(?:.|\n)*?\*/", discard),
+    ("newline_token", r"\n", NewlineToken.of),
+    ("whitespace_token", r"\s+", discard),
+    ("desc_token", r"(?:\w| )+", DescToken.of),
+    ("error_token", r".", ErrorToken.of),
 )
+"""
+Each entry must have a unqiue shortname, a regex pattern,
+and a TokenConstructor function to process the match into a Token
+object (or None, in the case of comments or the like)
+"""
 
+TOKEN_CONSTRUCTOR_MAP = {name: type for name, _, type in TOKEN_MANIFEST}
 
 TOKEN_REGEX = re.compile(
-    "|".join(rf"(?P<{name}>{pattern})" for name, pattern in TOKENS)
+    "|".join(rf"(?P<{name}>{pattern})" for name, pattern, _ in TOKEN_MANIFEST)
 )
 
 
 def tokenize(input: str) -> tuple[Token, ...]:
-    return process_raw(raw_tokenize(input))
+    return refined_from_raw(raw_tokenize(input))
 
 
 def raw_tokenize(input: str) -> Iterator[Token]:
@@ -117,21 +105,23 @@ def raw_tokenize(input: str) -> Iterator[Token]:
 
     for match_object in re.finditer(TOKEN_REGEX, input):
 
-        type_string = cast(str, match_object.lastgroup)
+        constructor = TOKEN_CONSTRUCTOR_MAP[cast(str, match_object.lastgroup)]
         lexeme = match_object.group()
         col_num = match_object.start() - line_start
 
-        print(f"matched {lexeme} as {type_string}")
+        print(f"matched {lexeme}")
 
-        token = token_of(type_string, lexeme, line_num, col_num)
+        token = constructor(lexeme, line_num, col_num)
 
         if token is None:
+            print("Discarding")
             pass
         else:
+            print(f"Yielding {token}")
             yield token
 
 
-def process_raw(raw: Iterator[Token]) -> tuple[Token, ...]:
+def refined_from_raw(raw: Iterator[Token]) -> tuple[Token, ...]:
 
     raw_tuple = tuple(raw)
 
@@ -154,12 +144,16 @@ def process_raw(raw: Iterator[Token]) -> tuple[Token, ...]:
 
 if __name__ == "__main__":
 
-    print(TOKEN_TYPE_MAP)
+    print(TOKEN_CONSTRUCTOR_MAP)
+
+    print("===")
+
+    tokens = tokenize("1:00 PM Lunch\n3:00 PM Chaplet of Divine Mercy")
+
+    print("===")
 
     print(
-        tokenize(
-            """1:00 PM Lunch
-        3:00 PM Chaplet of Divine Mercy
-        """
+        "\n".join(
+            str(t) for t in tokens
         )
     )
