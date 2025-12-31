@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import timedelta
 from typing import Never, Self
 
 type Token = TimeToken | AmPmToken | DescToken | NewlineToken | ErrorToken
@@ -7,22 +7,25 @@ type Token = TimeToken | AmPmToken | DescToken | NewlineToken | ErrorToken
 
 @dataclass(frozen=True)
 class TimeToken:
-    time: datetime
+    time: timedelta
+    """
+    Hours/minutes from midnight (AM)
+    or noon (PM)
+
+    0 <= t < 12 hr
+    """
 
     @classmethod
     def of(cls, s: str, line: int, col: int) -> Self:
 
         hour, minute = map(int, s.split(":"))
 
-        return cls(datetime.combine(datetime.now(), time(hour=hour, minute=minute)))
+        return cls(timedelta(hours=hour if hour != 12 else 0, minutes=minute))
 
 
 @dataclass(frozen=True)
 class AmPmToken:
-    value: bool
-    """
-    True for PM
-    """
+    is_pm: bool
 
     @classmethod
     def of(cls, s: str, line: int, col: int) -> Self:
@@ -44,7 +47,9 @@ class DescToken:
 class NewlineToken:
 
     @classmethod
-    def of(cls, s: str, line: int, col: int) -> Self:
+    def of(cls, s: str, line: int, col: int) -> None:
+
+        return None  # Temporarily rigged to discard
 
         return cls()
 

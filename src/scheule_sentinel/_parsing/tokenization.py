@@ -74,21 +74,23 @@ def refined_from_raw(raw: Iterator[Token]) -> tuple[Token, ...]:
 
     raw_tuple = tuple(raw)
 
-    without_blank_lines = tuple(
-        t
-        for i, t in enumerate(raw_tuple)
-        if not isinstance(t, NewlineToken)
-        or i == len(raw_tuple) - 1
-        or not isinstance(raw_tuple[i + 1], NewlineToken)
-    )
+    # Disabled because newlines are disabled
 
-    with_trailing_newline = (
-        without_blank_lines
-        if isinstance(without_blank_lines[-1], NewlineToken)
-        else without_blank_lines + (NewlineToken(),)
-    )
+    # without_blank_lines = tuple(
+    #     t
+    #     for i, t in enumerate(raw_tuple)
+    #     if not isinstance(t, NewlineToken)
+    #     or i == len(raw_tuple) - 1
+    #     or not isinstance(raw_tuple[i + 1], NewlineToken)
+    # )
 
-    return with_trailing_newline
+    # with_trailing_newline = (
+    #     without_blank_lines
+    #     if isinstance(without_blank_lines[-1], NewlineToken)
+    #     else without_blank_lines + (NewlineToken(),)
+    # )
+
+    return raw_tuple
 
 
 if __name__ == "__main__":
