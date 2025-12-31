@@ -2,10 +2,14 @@ import concurrent.futures
 import datetime
 import functools
 import heapq
+from os import path
 import winsound
 from time import sleep
+from tkinter import Tk
+from tkinter.filedialog import askopenfile
 
 from classes import ScheduleEntry
+from parsing import parse
 from prompting import prompt_minutes_seconds
 from test_schedule import test_schedule as test_schedule
 
@@ -48,7 +52,7 @@ def demand_acknowledgement() -> None:
         request_user_attention()
 
 
-TEST = True
+TEST = False
 
 
 def main() -> None:
@@ -56,11 +60,26 @@ def main() -> None:
     if TEST:
         schedule = test_schedule()
     else:
-        raise NotImplementedError
-        # Remember to use heapq operations!
+
+        src: str
+
+        # root = Tk()
+        # root.withdraw()
+        # with askopenfile() as f:  # pyright: ignore[reportOptionalContextManager]
+        #     src = f.read()
+        # root.destroy()
+
+        with open(path.join(path.dirname(__file__), "schedule.txt")) as f:
+            src = f.read()
+
+        schedule = parse(src)
+
+    print("\n===\n")
 
     for entry in schedule:
         print(entry)
+
+    print("\n===\n")
 
     while True:
 
