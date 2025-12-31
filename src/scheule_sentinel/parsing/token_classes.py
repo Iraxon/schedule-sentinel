@@ -42,7 +42,6 @@ class DescToken:
 
 @dataclass(frozen=True)
 class NewlineToken:
-    pass
 
     @classmethod
     def of(cls, s: str, line: int, col: int) -> Self:
@@ -52,7 +51,6 @@ class NewlineToken:
 
 @dataclass(frozen=True)
 class ErrorToken:
-    pass
 
     @classmethod
     def of(cls, s: str, line: int, col: int) -> Never:
