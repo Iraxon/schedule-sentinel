@@ -60,4 +60,4 @@ class ErrorToken:
     @classmethod
     def of(cls, s: str, line: int, col: int) -> Never:
 
-        raise ValueError(f"Unexpected character: {s}")
+        raise ValueError(f"Unexpected character: {s} on line {line}")

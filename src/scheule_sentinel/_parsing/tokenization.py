@@ -27,7 +27,7 @@ TOKEN_MANIFEST: tuple[tuple[str, str, TokenConstructor[Token]], ...] = (
     ("comment_token", r"(?:#|//)[^\n]*?(?=\n)|/\*(?:.|\n)*?\*/", discard),
     ("newline_token", r"\n", NewlineToken.of),
     ("whitespace_token", r"\s+", discard),
-    ("desc_token", r"(?:\w| )+", DescToken.of),
+    ("desc_token", r"[^\n]+", DescToken.of),
     ("error_token", r".", ErrorToken.of),
 )
 """
@@ -57,6 +57,8 @@ def raw_tokenize(input: str) -> Iterator[Token]:
         constructor = TOKEN_CONSTRUCTOR_MAP[cast(str, match_object.lastgroup)]
         lexeme = match_object.group()
         col_num = match_object.start() - line_start
+
+        line_num += lexeme.count("\n")
 
         print(f"matched {lexeme}")
 
